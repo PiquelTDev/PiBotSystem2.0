@@ -1,4 +1,6 @@
-BOT_TOKEN = "8254671233:AAEJaciszQQ3Ub_ccprFb6HbH0yb101RY0s"
+import os
+
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 MAX_MEDIA = 4
 BAN_TIME = 600
 WINDOW_TIME = 15
