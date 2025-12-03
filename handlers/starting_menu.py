@@ -2,6 +2,7 @@
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ContextTypes
 from sqlgestion import insert_user,normalizar_nombre,get_campo_usuario
+from handlers.tienda import tienda
 
 # =========  COMANDO /START  ========= #
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -54,7 +55,11 @@ async def menu_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
 
     elif data == "abrir_tienda":
-        await query.message.reply_text("🛍️ Abriendo tienda…")
+        fake_update = Update(
+            update.update_id,
+            message=query.message  # usar el mismo mensaje del callback
+        )
+        await tienda(fake_update, context)
 
     elif data == "ver_inventario":
         await query.message.reply_text("📦 Tu inventario está vacío (por ahora).")

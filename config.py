@@ -56,6 +56,10 @@ COMUNIDADES = [
     }
 ]
 
+DOMS = {
+    1370162159: [5661536115],
+    1174798556: [7064982957,7819911906,1128700552]
+}
 def obtener_temas_por_comunidad(community_id: int):
     for comunidad in COMUNIDADES:
         if comunidad["id_comunidad"] == community_id:

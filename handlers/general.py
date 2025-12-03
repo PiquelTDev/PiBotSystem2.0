@@ -111,6 +111,10 @@ async def dar(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⚠️ No se encontró al usuario receptor o no ha sido ingresado al sistema aún, si está usando @ evitelos y use el comando respondiendo un mensaje")
         return
 
+#    if sender.id == 5661536115 and receptor.id != 1370162159:
+#        await update.message.reply_text("No no Ara, debes tener permiso de tu dueño @Nicolas_Dom si quieres usar tus pipesos, te has portado mal")
+#        return
+    
     # Verificar saldo del emisor
     sender_id = sender.id
     sql_sender_username = get_campo_usuario(sender_id,"username")
@@ -187,6 +191,7 @@ async def numero_azar(update: Update, context: ContextTypes.DEFAULT_TYPE):
 #region COMANDOS ADMINS
 # TODO arreglar la funcion de quitar - temporalmente eliminada por mal uso
 async def quitar(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    
     """Comando /quitar: solo admins, quita puntos a un usuario."""
     print("================================0================================")
     sender = update.effective_user
@@ -213,6 +218,10 @@ async def quitar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if receptor is None or receptor is False:
         await update.message.reply_text("No es posible identificar al usuario")
         return
+
+#    if sender.id == 5661536115 and receptor.id != 1370162159:
+#        await update.message.reply_text("No no Ara, debes tener permiso de tu dueño @Nicolas_Dom si quieres usar tus pipesos, te has portado mal")
+#        return
 
     receptor_id = receptor.id
     receptor_username = receptor.username
@@ -257,6 +266,9 @@ async def regalar(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("⚠️ No fue posible identificar al usuario")
         return
     
+#    if sender.id == 5661536115 and receptor.id != 1370162159:
+#        await update.message.reply_text("No no Ara, debes tener permiso de tu dueño @Nicolas_Dom si quieres usar tus pipesos, te has portado mal")
+#        return
     receptor_id = receptor.id
     receptor_username = receptor.username
     
