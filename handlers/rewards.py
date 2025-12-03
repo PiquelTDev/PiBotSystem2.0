@@ -1,30 +1,35 @@
 # handlers/imagen_presentaciones.py
 import asyncio
-import json
 from datetime import datetime
-from types import SimpleNamespace
 from telegram import Update
 from telegram.ext import ContextTypes
-from config import CHAT_IDS # type: ignore
+from config import obtener_temas_por_comunidad
 from sqlgestion import normalizar_nombre,get_campo_usuario,insert_user,dar_puntos
 
 RUTA_USUARIOS = "pipesos.json"  # si usas otro nombre, ajústalo
 contador_imagenes_multimedia = {}
 contador_imagenes_nsfw = {}
+contador_imagenes_presentacion = []
 
 async def manejar_imagenes(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.message == None:
         return
-        
+    group_id = update.effective_chat.id
+    CHAT_IDS = obtener_temas_por_comunidad(group_id)
     thread_id = update.message.message_thread_id
     print(f"El thread_id es: {thread_id}")
 
     if thread_id == CHAT_IDS["theme_multimedia"]:
         await detectar_imagenes_multimedia(update, context)
         return
-    if thread_id == CHAT_IDS["theme_presentaciones"]:
-        #await detectar_imagen_presentacion(update, context)
-        return
+    if group_id != -1003290179217: 
+        if thread_id == CHAT_IDS["theme_presentaciones"]:
+            await detectar_imagen_presentacion(update, context)
+            return
+    else:
+        if thread_id == None:
+            await detectar_imagen_presentacion(update, context)
+            return
     if thread_id == CHAT_IDS["theme_NSFW"]:
         await detectar_imagenes_nsfw(update,context)
         return
@@ -57,19 +62,18 @@ async def detectar_imagen_presentacion(update: Update, context: ContextTypes.DEF
     nombre = normalizar_nombre(user.first_name,user.last_name)
 
     # comprobar campo personalizado 'primera_imagen_presentacion'
-    #if get_value(user_id,"primera_imagen_presentacion"):
-        #return
+    if user_id in contador_imagenes_presentacion:
+        return
 
-    # registrar la fecha/hora actual
     if get_campo_usuario(user_id,"id_user") is None:
         insert_user(user_id,0,username,nombre)
     
-    set_value(user_id,"primera_imagen_presentacion",datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    contador_imagenes_presentacion.append(user_id)
     dar_puntos(user_id,5)
 
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text=f"📸 {username}, gracias por presentarte con imagen 😁 como recompensa, te hemos otorgado tus primeros 5 pipesos 🌟 \n Puedes ganar más participando activamente en la comunidad, recuerda leer las reglas y pasarla bien con el resto de gente 🥰",
+        text=f"📸 {username or nombre}, gracias por presentarte con imagen 😁 como recompensa, te hemos otorgado tus primeros 5 pipesos 🌟 \n Puedes ganar más participando activamente en la comunidad, recuerda leer las reglas y pasarla bien con el resto de gente 🥰",
         message_thread_id=thread_id
     )
 
@@ -208,8 +212,8 @@ async def detectar_exhibicion(update: Update, context: ContextTypes.DEFAULT_TYPE
     # ✅ Enviar mensaje de confirmación al mismo hilo
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
-        text=f"✨ @{username} ha sido recompensado con 10 PiPesos por su publicación en Exhibicionismo 💫",
+        text=f"✨ @{username or nombre} ha sido recompensado con 10 PiPesos por su publicación en Exhibicionismo 💫",
         message_thread_id=thread_id
     )
 
-    print(f"💰 {username} recibió 10 PiPesos por actividad en Exhibición (ID: {user_id})")
+    print(f"💰 {username or nombre} recibió 10 PiPesos por actividad en Exhibición (ID: {user_id})")

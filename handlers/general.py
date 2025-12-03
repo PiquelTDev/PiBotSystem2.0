@@ -1,22 +1,11 @@
-import json
-import os
 import random
-import asyncio
-import re
-from types import SimpleNamespace
-import unicodedata
-from telegram import MessageEntity, Update
-from telegram.ext import ContextTypes, CommandHandler
-from config import CHAT_IDS, RUTA_USUARIOS # type: ignore
+from telegram import Update
+from telegram.ext import ContextTypes
+
 from sqlgestion import get_campo_usuario,normalizar_nombre,update_perfil,insert_user,get_id_user,quitar_puntos,dar_puntos
 
 #region FUNCIONES AUXILIARES
 async def verificar_admin(user_id: int, update: Update) -> bool:
-    """
-    Verifica si un usuario es administrador del chat actual.
-    Recibe el ID del usuario y el objeto update.
-    Retorna True si es admin o False si no lo es.
-    """
     chat = update.effective_chat
     try:
         # Obtiene los administradores del chat actual
@@ -30,47 +19,11 @@ async def verificar_admin(user_id: int, update: Update) -> bool:
     except Exception as e:
         print(f"Error verificando admin: {e}")
         return False
-async def log_ids(update: Update, context: ContextTypes.DEFAULT_TYPE,functionType):
     
-    if not update.message:
-        return
-
-    chat = update.effective_chat
-    message = update.message
-    user = update.effective_user
-
-    chat_id = chat.id
-    thread_id = getattr(message, "message_thread_id", None)
-    
-    if chat_id == -1002880391080:
-        return
-    
-    # Intentar obtener el chat principal (para saber si pertenece a una comunidad)
-    comunidad_nombre = None
-    try:
-        chat_info = await context.bot.get_chat(chat_id)
-        comunidad_nombre = chat_info.title
-    except Exception as e:
-        print(f"[LOG] No se pudo obtener información del chat: {e}")
-
-    # Obtener lista de administradores del grupo o comunidad
-    admins = []
-    try:
-        admin_members = await context.bot.get_chat_administrators(chat_id)
-        admins = [admin.user.username or admin.user.first_name for admin in admin_members]
-    except Exception as e:
-        print(f"[LOG] Error al obtener administradores: {e}")
-
-    print("──────────────────────────────")
-    print(f" Comunidad: {comunidad_nombre or 'Desconocida / Chat privado'}")
-    print(f" Chat: {chat.title or 'Privado'}")
-    print(f" Chat ID: {chat_id}")
-    print(f" Thread ID: {thread_id}")
-    print(f" Usuario que ejecutó: {user.username or user.full_name}")
-    print(f" Administradores: {', '.join(admins) if admins else 'No disponible o chat privado'}")
-    print(f" Comando: /{functionType}")
-    print("──────────────────────────────")
 async def get_receptor(update: Update, context: ContextTypes.DEFAULT_TYPE,args_length=-1):
+    if len(context.args) == 0:
+        return None
+    
     if len(context.args) >= args_length:
         if not context.args[args_length-1].startswith("@"):
             await update.message.reply_text("⚠️ No es posible identificar al usuario sin un arroba, puede usar el comando respondiendo a uno de los mensajes del usuario al que desea enviarle los PiPesos")
@@ -83,7 +36,6 @@ async def get_receptor(update: Update, context: ContextTypes.DEFAULT_TYPE,args_l
         else:
             receptor = None
     elif update.message.reply_to_message:
-        print("usuario identificado por respuesta de mensaje")
         try:
             receptor = update.message.reply_to_message.from_user
             if get_campo_usuario(receptor.id,"id_user") is None:
@@ -102,7 +54,6 @@ async def get_receptor(update: Update, context: ContextTypes.DEFAULT_TYPE,args_l
 
 #region COMANDOS USO GENERAL
 async def ver(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await log_ids(update,context,"ver")
     print("================================0================================")
     user = update.effective_user
     
@@ -138,7 +89,6 @@ async def ver(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print("================================1================================\n")
 async def dar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print("================================0================================")
-    await log_ids(update,context,"dar")
     sender = update.effective_user
 
     if not context.args:
@@ -202,7 +152,6 @@ async def dar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print("================================1================================\n")
 async def numero_azar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     print("================================0================================")
-    await log_ids(update,context,"num_azar")
     
     if len(context.args) < 2:
         return await update.message.reply_text(
@@ -239,7 +188,6 @@ async def numero_azar(update: Update, context: ContextTypes.DEFAULT_TYPE):
 # TODO arreglar la funcion de quitar - temporalmente eliminada por mal uso
 async def quitar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Comando /quitar: solo admins, quita puntos a un usuario."""
-    await log_ids(update,context,"quitar")
     print("================================0================================")
     sender = update.effective_user
     
@@ -277,7 +225,6 @@ async def quitar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
     print("================================0================================")
 async def regalar(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await log_ids(update,context,"regalar")
     print("================================0================================")
     sender = update.effective_user
     

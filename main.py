@@ -1,11 +1,11 @@
 from telegram import Update
-from telegram.ext import Application, MessageHandler, filters , ContextTypes, CommandHandler, ChatMemberHandler
+from telegram.ext import Application, MessageHandler, filters , ContextTypes, CommandHandler,CallbackQueryHandler
 
 from handlers.rewards import manejar_imagenes
 from handlers.welcoming import nuevo_usuario,mensaje_de_presentaciones
-from handlers.general import dar,ver,regalar,numero_azar,quitar # type: ignore
+from handlers.general import dar,ver,regalar,numero_azar,quitar
 from handlers.theme_juegosYcasino import apostar,aceptar,detectar_dado,cancelar_apuesta,jugar,robar
-
+from handlers.starting_menu import start,menu_callback
 from config import BOT_TOKEN # type: ignore
 
 async def get_theme_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -34,7 +34,6 @@ def main():
     # Handlers recompensas
     app.add_handler(MessageHandler(filters.PHOTO | filters.VIDEO | filters.ANIMATION, manejar_imagenes))
 
-
     # Handler general (para todos los chats)
     app.add_handler(CommandHandler("ver", ver))
     app.add_handler(CommandHandler("regalar", regalar))
@@ -52,10 +51,12 @@ def main():
     app.add_handler(CommandHandler("apostar", apostar))
     app.add_handler(CommandHandler("aceptar", aceptar))
     app.add_handler(CommandHandler("cancelar", cancelar_apuesta))
-    app.add_handler(CommandHandler("jugar", jugar))
     app.add_handler(CommandHandler("robar", robar))
-    app.add_handler(MessageHandler(filters.Dice.ALL, detectar_dado))
-
+    app.add_handler(CommandHandler("jugar", jugar))
+    app.add_handler(MessageHandler(filters.Dice.DICE, detectar_dado))
+    
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CallbackQueryHandler(menu_callback))
     
     print("🤖 Bot corriendo...")
     

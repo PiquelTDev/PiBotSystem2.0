@@ -1,11 +1,10 @@
-import asyncio,random,json,os
+import asyncio,random
 from datetime import datetime
-from types import SimpleNamespace
-from telegram import Update, MessageEntity
+from telegram import Update
 from telegram.ext import ContextTypes
 from handlers.general import get_receptor
 from sqlgestion import normalizar_nombre,get_campo_usuario,insert_user,dar_puntos,quitar_puntos,update_perfil
-from config import CHAT_IDS # type: ignore
+from config import obtener_temas_por_comunidad
 
 # === BASE DE DATOS EN MEMORIA ===
 active_bets = {}
@@ -14,10 +13,12 @@ juego = {}
 
 # === CREAR APUESTA ===
 async def apostar(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    CHAT_IDS = obtener_temas_por_comunidad(update.effective_chat.id)
+
     thread_id = update.message.message_thread_id
     user = update.effective_user
     
-    # 📌 Filtro: Solo se puede en el tema de Juegos y Casino
     if thread_id != CHAT_IDS["theme_juegosYcasino"]:
         await update.message.reply_text("⚠️ Este comando solo está permitido en el tema Juegos y Casino.")
         return
@@ -87,10 +88,12 @@ async def apostar(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # === ACEPTAR APUESTA ===
 async def aceptar(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    
+    CHAT_IDS = obtener_temas_por_comunidad(update.effective_chat.id)
+    
     thread_id = update.message.message_thread_id
     user = update.effective_user
     
-    # 📌 Verificar si hay apuesta activa en este tema
     bet = active_bets.get(thread_id)
     if not bet:
         await update.message.reply_text("⚠️ No hay apuestas activas para aceptar en este tema.")
@@ -108,18 +111,17 @@ async def aceptar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = user.id
     user_username = user.username
     user_nombre = normalizar_nombre(user.first_name,user.last_name)
+    
     if get_campo_usuario(user_id,"id_user"):
         user_saldo = get_campo_usuario(user_id,"saldo")
     else:
         user_saldo = 0
         insert_user(user_id,user_saldo,user_username,user_nombre)
 
-    # 📌 Validar saldo
     if user_saldo < bet["cantidad"]:
         await update.message.reply_text(f"💸 Saldo insuficiente. Tu saldo es {user_saldo} PiPesos.")
         return
 
-    # ✅ Registrar rival en la apuesta activa
     bet["rival_id"] = user_id
     bet["rival_username"] = user_username or user_nombre
 
@@ -130,10 +132,10 @@ async def aceptar(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # === CANCELAR APUESTA ===
 async def cancelar_apuesta(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    
     thread_id = update.message.message_thread_id
     user = update.effective_user
     
-    # 📌 Verificar si existe apuesta activa en el tema
     bet = active_bets.get(thread_id)
     if not bet:
         await update.message.reply_text("⚠️ No hay apuesta activa para cancelar en este tema.")
@@ -152,6 +154,7 @@ async def cancelar_apuesta(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # === DETECTAR DADOS ===
 async def detectar_dado(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    
     msg = update.message
     if not msg or not msg.dice:
         return  # ignorar mensajes que no sean dados
@@ -162,7 +165,6 @@ async def detectar_dado(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return  # no hay apuesta activa
 
     user = msg.from_user
-    jugador = None
 
     if user.id == bet["apostador_id"]:
         jugador = "apostador"
@@ -189,16 +191,6 @@ async def detectar_dado(update: Update, context: ContextTypes.DEFAULT_TYPE):
         rival_id = bet["rival_id"]
         cantidad = bet["cantidad"]
 
-        # ⚠️ Verificación de existencia
-#        if not existe_usuario(apostador_id) or not existe_usuario(rival_id):
-#            await context.bot.send_message(
-#                chat_id=update.effective_chat.id,
-#                text="⚠️ Error: No se encontraron los datos de uno o ambos jugadores en el sistema.",
-#                message_thread_id=thread_id
-#            )
-#            del active_bets[thread_id]
-#            return
-
         if ap > rv:
             ganador = bet["apostador_username"]
             resultado = f"🏆 *{ganador}* gana la apuesta de {cantidad} PiPesos!"
@@ -224,9 +216,12 @@ async def detectar_dado(update: Update, context: ContextTypes.DEFAULT_TYPE):
         del active_bets[thread_id]
 
 async def jugar(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    CHAT_IDS = obtener_temas_por_comunidad(update.effective_chat.id)
+
     thread_id = update.message.message_thread_id
     user = update.effective_user
     user_id = user.id
+    
     tmp_user_username = user.username
     tmp_user_nombre = normalizar_nombre(user.first_name,user.last_name)
     sql_user_username = get_campo_usuario(user_id,"username")
@@ -272,7 +267,7 @@ async def jugar(update: Update, context: ContextTypes.DEFAULT_TYPE):
         message_thread_id=thread_id
     )
     valor = dice_message.dice.value
-
+    print(f"El valor es de: {valor}")
     if valor == 6 or valor == 1:
         dar_puntos(user_id, 50)
         resultado = f"🎉 ¡Ganaste! sacaste {valor} 🎲\n💰 Se te acreditaron 50 PiPesos."
@@ -283,12 +278,13 @@ async def jugar(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     await update.message.reply_text(
         f"{resultado}\nSaldo actual: {nuevo_saldo} PiPesos\n"
-        f"🔄 Veces jugadas hoy: {tmp_veces+1}/3",
+        f"🔄 Veces jugadas hoy: {tmp_veces+1}/5",
         message_thread_id=thread_id
     )
 
 async def robar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Comando /robar @Usuario - Solo válido con @Usuario, no con reply."""
+    CHAT_IDS = obtener_temas_por_comunidad(update.effective_chat.id)
     thread_id = update.message.message_thread_id
     
     robber_user = update.effective_user
@@ -297,6 +293,7 @@ async def robar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     tmp_robber_username = robber_user.username
     sql_robber_nombre = get_campo_usuario(robber_user.id,"nombre")
     tmp_robber_nombre = normalizar_nombre(robber_user.first_name,robber_user.last_name)
+    
     if get_campo_usuario(robber_user.id,"id_user") is None:
         insert_user(robber_user.id,0,tmp_robber_username,tmp_robber_nombre)
         sql_robber_nombre = tmp_robber_nombre
@@ -314,7 +311,7 @@ async def robar(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     robbed_user = await get_receptor(update,context,1)
     
-    if robbed_user is None:
+    if robbed_user is None or robbed_user is False:
         await update.message.reply_text("⚠️ No ha sido posible encontrar al usuario.")
         return    
     
@@ -334,12 +331,6 @@ async def robar(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     exito = random.choice([True, False, False])
 
-    if robbed_id == 7745029153 or robbed_id == 5708369612:
-        exito = random.choice([True,True,True,False])
-
-    if robber_id == 1128700552:
-        exito = random.choice([False,False,False,False,False,False,False,False,False,True])
-    
     if exito:
         cantidad_robada = random.randint(1,100)
         saldo_robbed_user = get_campo_usuario(robbed_user.id,"saldo")
